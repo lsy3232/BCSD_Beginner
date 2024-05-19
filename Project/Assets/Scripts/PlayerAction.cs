@@ -4,14 +4,13 @@ using UnityEngine;
 
 public class PlayerAction : MonoBehaviour
 {
-    public float maxSpeed;
-    public float jumpPower;
-    public float UpDownSpeed = 2.5f;
-    public int jumpCount = 0;
-    public int maxJumpCount = 2;
+    public GameManager gameManager;
     Rigidbody2D rigid;
     SpriteRenderer spriteRenderer;
     Animator anim;
+    CapsuleCollider2D capsuleCollider;
+
+    private bool isInvincible = false;
 
     void Awake() 
     {
@@ -20,91 +19,116 @@ public class PlayerAction : MonoBehaviour
         anim = GetComponent<Animator>();
     }
 
-    void Update()
+    void OnCollisionEnter2D(Collision2D collision) 
     {
-        //점프
-        if (Input.GetButtonDown("Jump") && jumpCount < maxJumpCount)
+        if (isInvincible) return;
+
+        if (collision.gameObject.tag == "Enemy")
         {
-            if (jumpCount == 0 || jumpCount == 1)
+            // 플레이어가 떨어지고 있는지 확인
+            if (rigid.velocity.y < 0)
             {
-                if (jumpCount == 0)
+                // 플레이어의 발 위치가 적의 머리보다 높은지 확인
+                float playerBottom = transform.position.y - (GetComponent<SpriteRenderer>().bounds.size.y / 4);
+                float enemyTop = collision.transform.position.y + (collision.collider.bounds.size.y / 4);
+
+                if (playerBottom > enemyTop)
                 {
-                    anim.SetBool("isJumping", true);
-                }
-                else if (jumpCount == 1 && anim.GetBool("isFalling"))
-                {
-                    anim.SetBool("DoubleJump", true);
-                    anim.SetBool("isFalling", false);
+                    OnAttack(collision.transform);
                 }
                 else
                 {
-                    anim.SetBool("DoubleJump", true);
-                    anim.SetBool("isJumping", false);
+                    OnDamaged(collision.transform.position);
                 }
-                rigid.velocity = new Vector2(rigid.velocity.x, 0);
-                rigid.AddForce(Vector2.up * jumpPower, ForceMode2D.Impulse);
-                jumpCount++;
+            }
+            else
+            {
+                OnDamaged(collision.transform.position);
             }
         }
-        if (rigid.velocity.y < 0) //하강속도 증가
-        {
-            rigid.velocity += Vector2.up * Physics2D.gravity.y * (UpDownSpeed - 1) * Time.deltaTime;
-        }
-        if (rigid.velocity.y > 0) //상승속도 증가
-        {
-            rigid.velocity += Vector2.up * Physics2D.gravity.y * (UpDownSpeed - 1) * Time.deltaTime;
-        }
-
-        //정지 속도
-        if (Input.GetButtonUp("Horizontal"))
-        {
-            rigid.velocity = new Vector2(rigid.velocity.normalized.x * 0.5f, rigid.velocity.y);
-        }
-
-        //방향 전환
-        if(Input.GetButton("Horizontal"))
-            spriteRenderer.flipX = Input.GetAxisRaw("Horizontal") == -1;
-
-        //애니메이션
-        if(Mathf.Abs(rigid.velocity.x) < 0.3)
-            anim.SetBool("isWalking",false);
-        else
-            anim.SetBool("isWalking",true);
     }
 
-    void FixedUpdate()
+    void OnTriggerEnter2D(Collider2D collision) 
     {
-        if (rigid.velocity.y < 0)
+        if(collision.gameObject.tag == "Item") 
         {
-            anim.SetBool("DoubleJump", false);
-            anim.SetBool("isJumping", false);
-            anim.SetBool("isFalling", true);
+            bool Apple = collision.gameObject.name.Contains("Apple");
+            bool Banana = collision.gameObject.name.Contains("Banana");
+            bool Cherry = collision.gameObject.name.Contains("Cherry");
+            bool Kiwi = collision.gameObject.name.Contains("Kiwi");
+            bool Melon = collision.gameObject.name.Contains("Melon");
+            bool Orange = collision.gameObject.name.Contains("Orange");
+            bool Pineapple = collision.gameObject.name.Contains("Pineapple");
+            bool Strawberry = collision.gameObject.name.Contains("Strawberry");
+            
+            //점수
+            if (Apple) gameManager.stagePoint += 50;
+            else if (Banana) gameManager.stagePoint += 100;
+            else if (Cherry) gameManager.stagePoint += 150;
+            else if (Kiwi) gameManager.stagePoint += 200;
+            else if (Melon) gameManager.stagePoint += 250;
+            else if (Orange) gameManager.stagePoint += 300;
+            else if (Pineapple) gameManager.stagePoint += 350;
+            else if (Strawberry) gameManager.stagePoint += 400;
         }
+            
 
-        //키로 움직이기
-            float h = Input.GetAxisRaw("Horizontal");
-
-        rigid.AddForce(Vector2.right * h, ForceMode2D.Impulse);
-
-        //최대 속도
-        if(rigid.velocity.x > maxSpeed) //오른쪽 최대 속도
-            rigid.velocity = new Vector2(maxSpeed,rigid.velocity.y);
-        else if (rigid.velocity.x < maxSpeed * (-1)) //왼쪽 최대 속도
-            rigid.velocity = new Vector2(maxSpeed * (-1), rigid.velocity.y);
-
-        //착지 인식
-        if(rigid.velocity.y < 0)
+        else if (collision.gameObject.tag == "CheckPoint")
         {
-            Debug.DrawRay(rigid.position, Vector3.down, new Color(0, 1, 0));
-            RaycastHit2D rayHit = Physics2D.Raycast(rigid.position, Vector3.down, 1, LayerMask.GetMask("Platform"));
-            if(rayHit.collider != null)
-            {
-                if(rayHit.distance < 0.5f)
-                {
-                    anim.SetBool("isFalling", false);
-                    jumpCount = 0;
-                }
-            }
+            //다음 스테이지
+            gameManager.NextStage();
         }
+    }
+
+    void OnAttack(Transform enemy)
+    {
+        //점수
+        gameManager.stagePoint +=100;
+
+        //적 죽이기
+        EnemyMove enemyMove = enemy.GetComponent<EnemyMove>();
+        enemyMove.OnDamaged();
+    }
+
+    //플레이어 데미지
+    void OnDamaged(Vector2 targetPos)
+    {
+        //체력 감소
+        gameManager.HealthDown();
+
+        //투명도
+        spriteRenderer.color = new Color(1,1,1,0.4f);
+
+        //충돌 반응
+        int dirc = transform.position.x - targetPos.x > 0? 1 : -1;
+        rigid.AddForce(new Vector2(dirc * 3, 5), ForceMode2D.Impulse);
+
+        //애니메이션
+        anim.SetTrigger("doDamaged");
+
+        isInvincible = true;
+        Invoke("OffDamaged", 1);
+    }
+
+    void OffDamaged()
+    {
+        spriteRenderer.color = new Color(1, 1, 1, 1);
+        isInvincible = false;
+    }
+
+    public void OnDie()
+    {
+        anim.SetTrigger("doDie");
+        Invoke("Die", 0.3f);
+    }
+
+    public void Die()
+    {
+        gameObject.SetActive(false);
+    }
+
+    public void VelocityZero()
+    {
+        rigid.velocity = Vector2.zero;
     }
 }

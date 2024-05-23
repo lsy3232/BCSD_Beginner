@@ -14,7 +14,6 @@ public class GameManager : MonoBehaviour
     public GameObject[] Stages;
     public GameObject Menu;
     public GameObject gameover;
-    public GameObject Game;
 
     public Image[] UIhealth;
     public Text game;
@@ -60,12 +59,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    //버튼 클릭했을 때 게임 시작
-    public void OnPlayButtonClicked()
-    {
-        PlayerReposition();
-    }
-
     //버튼 클릭했을 때 게임 중지
     public void OnPauseButtonClicked()
     {
@@ -77,6 +70,7 @@ public class GameManager : MonoBehaviour
     public void OnExitButtonClicked()
     {
         Application.Quit();
+        highsc = 0;
     }
 
     //버튼 클릭했을 때 게임 재개
@@ -100,7 +94,6 @@ public class GameManager : MonoBehaviour
 
     public void NextStage()
     {
-        Debug.Log(Stages.Length);
         //스테이지 변환
         if(stageIndex < Stages.Length-1)
         {
@@ -116,6 +109,7 @@ public class GameManager : MonoBehaviour
             //플레이어 정지
             Time.timeScale = 0;
             //결과창
+            Stages[stageIndex].SetActive(false);
             gameover.SetActive(true);
             game.text = "게임 클리어!";
         }

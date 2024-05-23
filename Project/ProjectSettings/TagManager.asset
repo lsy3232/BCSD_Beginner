@@ -8,6 +8,12 @@ TagManager:
   - Enemy
   - Item
   - CheckPoint
+  - Trampoline
+  - Saw
+  - Dead
+  - Fire
+  - RockHead
+  - Ghost
   layers:
   - Default
   - TransparentFX

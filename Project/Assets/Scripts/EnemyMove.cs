@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class EnemyMove : MonoBehaviour
@@ -51,7 +49,6 @@ public class EnemyMove : MonoBehaviour
             spriteRenderer.flipX = nextMove == 1;
 
         //재귀
-        float nextThinkTime = Random.Range(2f, 2f);
         Invoke("Think", 5);
     }
 

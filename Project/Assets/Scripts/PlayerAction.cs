@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerAction : MonoBehaviour
@@ -8,15 +6,45 @@ public class PlayerAction : MonoBehaviour
     Rigidbody2D rigid;
     SpriteRenderer spriteRenderer;
     Animator anim;
-    CapsuleCollider2D capsuleCollider;
 
     private bool isInvincible = false;
+    private bool isFireOn = false;
 
     void Awake() 
     {
         rigid = GetComponent<Rigidbody2D>();
         spriteRenderer = GetComponent<SpriteRenderer>();
         anim = GetComponent<Animator>();
+    }
+
+    void Update()
+    {
+        CheckForFireCollision();
+    }
+
+    void CheckForFireCollision()
+    {
+        //overbox는 플레이어와 겹쳐있는 모든 콜라이더 호출, 
+        Collider2D[] overcolliders = Physics2D.OverlapBoxAll(transform.position, GetComponent<Collider2D>().bounds.size, 0);
+        foreach (var collider in overcolliders)
+        {
+            if (collider.CompareTag("Fire"))
+            {
+                Animator otherAnimator = collider.GetComponent<Animator>();
+                if (otherAnimator.GetCurrentAnimatorStateInfo(0).IsName("Fire_On"))
+                {
+                    if (!isFireOn)
+                    {
+                        isFireOn = true;
+                        OnDamaged(collider.transform.position);
+                    }
+                }
+                else
+                {
+                    isFireOn = false;
+                }
+            }
+        }
     }
 
     void OnCollisionEnter2D(Collision2D collision) 
@@ -46,6 +74,25 @@ public class PlayerAction : MonoBehaviour
                 OnDamaged(collision.transform.position);
             }
         }
+
+        else if (collision.gameObject.tag == "Trampoline")
+        {
+            // 플레이어가 떨어지고 있는지 확인
+            if (rigid.velocity.y < 0)
+            {
+                rigid.AddForce(new Vector2(rigid.velocity.x, 20), ForceMode2D.Impulse);
+            }
+        }
+
+        else if (collision.gameObject.tag == "Saw")
+        {
+            OnDamaged(collision.transform.position);
+        }
+
+        else if (collision.gameObject.tag == "RockHead")
+        {
+            OnDamaged(collision.transform.position);
+        }
     }
 
     void OnTriggerEnter2D(Collider2D collision) 
@@ -72,12 +119,11 @@ public class PlayerAction : MonoBehaviour
             else if (Strawberry) gameManager.stagePoint += 400;
         }
             
-
         else if (collision.gameObject.tag == "CheckPoint")
         {
             //다음 스테이지
             gameManager.NextStage();
-        }
+        }        
     }
 
     void OnAttack(Transform enemy)
